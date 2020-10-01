@@ -1984,6 +1984,11 @@ export const commands: ChatCommands = {
 				if (!this.targetUser) return this.errorReply(`Nobody on the host queue could be hosted.`);
 			} else {
 				this.splitTarget(target, true);
+				if (room.roomid === 'mafia' && hostQueue.length && toID(this.targetUsername) !== hostQueue[0]) {
+					if (!cmd.includes('force')) {
+						return this.errorReply(`${this.targetUsername} isn't the next host on the queue. Use /mafia forcehost if you're sure.`);
+					}
+				}
 			}
 
 			if (!this.targetUser || !this.targetUser.connected) {
@@ -2059,7 +2064,7 @@ export const commands: ChatCommands = {
 			case '':
 			case 'show':
 			case 'view':
-				this.checkBroadcast();
+				if (!this.runBroadcast()) return;
 				this.sendReplyBox(`<strong>Host Queue:</strong> ${hostQueue.join(', ')}`);
 				break;
 			default:

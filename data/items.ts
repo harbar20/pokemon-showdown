@@ -1951,6 +1951,15 @@ export const Items: {[itemid: string]: ItemData} = {
 		num: 316,
 		gen: 4,
 	},
+	galaricacuff: {
+		name: "Galarica Cuff",
+		spritenum: 739,
+		fling: {
+			basePower: 30,
+		},
+		num: 1582,
+		gen: 8,
+	},
 	galladite: {
 		name: "Galladite",
 		spritenum: 616,
@@ -6649,12 +6658,8 @@ export const Items: {[itemid: string]: ItemData} = {
 		fling: {
 			basePower: 80,
 		},
-		onHitPriority: 1,
-		onHit(target, source, move) {
-			if (
-				target.hp && move.category !== 'Status' && !move.damage &&
-				!move.damageCallback && target.getMoveHitData(move).typeMod > 0
-			) {
+		onDamagingHit(damage, target, source, move) {
+			if (!move.damage && !move.damageCallback && target.getMoveHitData(move).typeMod > 0) {
 				target.useItem();
 			}
 		},

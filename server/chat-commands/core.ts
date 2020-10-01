@@ -529,7 +529,6 @@ export const commands: ChatCommands = {
 	inv: 'invite',
 	invite(target, room, user) {
 		if (!target) return this.parse('/help invite');
-		this.checkChat();
 		if (room) target = this.splitTarget(target) || room.roomid;
 		let targetRoom = Rooms.search(target);
 		if (targetRoom && !targetRoom.checkModjoin(user)) {
@@ -544,11 +543,12 @@ export const commands: ChatCommands = {
 			return this.parse(`/pm ${targetUsername}, /invite ${targetRoom.roomid}`);
 		}
 
-		const targetUser = this.pmTarget!; // not room means it's a PM
+		const targetUser = this.pmTarget; // not room means it's a PM
 
 		if (!targetRoom) {
 			return this.errorReply(this.tr`The room "${target}" was not found.`);
 		}
+		if (!targetUser) return this.parse(`/help invite`);
 		if (!targetRoom.checkModjoin(targetUser)) {
 			this.room = targetRoom;
 			this.parse(`/roomvoice ${targetUser.name}`);
@@ -559,7 +559,7 @@ export const commands: ChatCommands = {
 		if (targetUser.id in targetRoom.users) {
 			return this.errorReply(this.tr`This user is already in "${targetRoom.title}".`);
 		}
-		return `/invite ${targetRoom.roomid}`;
+		return this.checkChat(`/invite ${targetRoom.roomid}`);
 	},
 	invitehelp: [
 		`/invite [username] - Invites the player [username] to join the room you sent the command to.`,
@@ -660,6 +660,7 @@ export const commands: ChatCommands = {
 	},
 	awayhelp: [`/away - Marks you as away. Send a message or use /back to indicate you are back.`],
 
+	cs: 'clearstatus',
 	clearstatus(target, room, user) {
 		if (target) {
 			room = this.requireRoom();
@@ -672,7 +673,7 @@ export const commands: ChatCommands = {
 
 			const displayReason = reason ? `: ${reason}` : ``;
 			this.privateModAction(room.tr`${targetUser.name}'s status "${targetUser.userMessage}" was cleared by ${user.name}${displayReason}.`);
-			this.globalModlog('CLEARSTATUS', targetUser, ` from "${targetUser.userMessage}" by ${user.name}${reason ? `: ${reason}` : ``}`);
+			this.globalModlog('CLEARSTATUS', targetUser, ` from "${targetUser.userMessage}"${reason ? `: ${reason}` : ``}`);
 			targetUser.clearStatus();
 			targetUser.popup(`${user.name} has cleared your status message for being inappropriate${reason ? `: ${reason}` : '.'}`);
 			return;
@@ -927,13 +928,14 @@ export const commands: ChatCommands = {
 	async showset(target, room, user, connection, cmd) {
 		this.checkChat();
 		const showAll = cmd === 'showteam';
+		const hideStats = toID(target) === 'hidestats';
 		room = this.requireRoom();
 		const battle = room.battle;
 		if (!showAll && !target) return this.parse(`/help showset`);
 		if (!battle) return this.errorReply(this.tr("This command can only be used in a battle."));
 		let teamStrings = await battle.getTeam(user);
 		if (!teamStrings) return this.errorReply(this.tr("Only players can extract their team."));
-		if (target) {
+		if (!showAll) {
 			const parsed = parseInt(target);
 			if (parsed > 6) return this.errorReply(this.tr`Use a number between 1-6 to view a specific set.`);
 			if (isNaN(parsed)) {
@@ -950,7 +952,7 @@ export const commands: ChatCommands = {
 				teamStrings = [indexedSet];
 			}
 		}
-		let resultString = Dex.stringifyTeam(teamStrings);
+		let resultString = Dex.stringifyTeam(teamStrings, undefined, hideStats);
 		if (showAll) {
 			resultString = `<details><summary>${this.tr`View team`}</summary>${resultString}</details>`;
 		}
@@ -959,6 +961,7 @@ export const commands: ChatCommands = {
 	},
 	showsethelp: [
 		`!showteam - show the team you're using in the current battle (must be used in a battle you're a player in).`,
+		`!showteam hidestats - show the team you're using in the current battle, without displaying any stat-related information.`,
 		`!showset [number] - shows the set of the pokemon corresponding to that number (in original Team Preview order, not necessarily current order)`,
 	],
 
@@ -1055,12 +1058,17 @@ export const commands: ChatCommands = {
 		room.game.forfeit(user);
 	},
 
+	guess: 'choose',
 	choose(target, room, user) {
 		room = this.requireRoom();
 		if (!room.game) return this.errorReply(this.tr("This room doesn't have an active game."));
 		if (!room.game.choose) return this.errorReply(this.tr("This game doesn't support /choose"));
+		if (room.game.checkChat) this.checkChat();
 		room.game.choose(user, target);
 	},
+	choosehelp: [
+		`/choose [text] - Make a choice for the currently active game.`,
+	],
 
 	mv: 'move',
 	attack: 'move',
